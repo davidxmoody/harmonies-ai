@@ -1,3 +1,4 @@
+from rich.text import Text
 from enum import IntFlag, auto
 
 
@@ -8,6 +9,21 @@ class Token(IntFlag):
     GREEN = auto()
     BLUE = auto()
     YELLOW = auto()
+
+    def __rich__(self):
+        match self:
+            case Token.GRAY:
+                return Text("GRY", style="#BAC1C5 on #878886")
+            case Token.RED:
+                return Text("RED", style="#F07A65 on #BA3245")
+            case Token.BROWN:
+                return Text("BRN", style="#D39C80 on #8B5539")
+            case Token.GREEN:
+                return Text("GRN", style="#BBD56A on #919627")
+            case Token.BLUE:
+                return Text("BLU", style="#6AC6D3 on #007A85")
+            case Token.YELLOW:
+                return Text("YLW", style="#F2EB60 on #D8A705")
 
 
 class Stack(IntFlag):
