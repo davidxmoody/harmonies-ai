@@ -8,6 +8,10 @@ class AnimalCard:
     reqs: tuple[tuple[int, int, Stack], ...]
     rewards: tuple[int, ...]
 
+    @property
+    def num_cubes(self):
+        return len(self.rewards)
+
     @classmethod
     def pair(cls, base: Stack, req: Stack, rewards: tuple[int, ...]):
         return cls(base, ((1, 0, req),), rewards)
