@@ -1,14 +1,11 @@
 from typing import Counter
-from random import choices
+from random import choice, choices
+from harmonies_ai.cards import AnimalCard, cards
 from harmonies_ai.tokens import Stack, Token
 
 
 Grid = list
 grid_size = 23
-
-
-class AnimalCard:
-    scores: list[int]
 
 
 class GameState:
@@ -34,13 +31,14 @@ class GameState:
             }
         )
 
-        self.supply_cards = set()  # TODO
+        self.supply_cards = set(cards)
+        self.display_cards = set()
+
+        self._refresh_display()
 
         self.cards = {}
         self.cubes = [False] * grid_size
         self.board = [Stack.EMPTY] * grid_size
-
-        self._refresh_display()
 
     def _draw_token(self):
         token = choices(
@@ -51,5 +49,12 @@ class GameState:
         self.supply_tokens[token] -= 1
         return token
 
+    def _draw_card(self):
+        card = choice(tuple(self.supply_cards))
+        self.supply_cards.remove(card)
+        return card
+
     def _refresh_display(self):
-        self.display_tokens = [[self._draw_token() for _ in range(2)] for _ in range(2)]
+        self.display_tokens = [[self._draw_token() for _ in range(3)] for _ in range(3)]
+        while len(self.display_cards) < 4:
+            self.display_cards.add(self._draw_card())
