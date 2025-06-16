@@ -33,15 +33,15 @@ class AnimalCard:
         return cls(base, ((1, 0, req1), (2, 0, req2)), rewards)
 
 
-M1 = Stack.MOUNTAIN_1
-M2 = Stack.MOUNTAIN_2
-M3 = Stack.MOUNTAIN_3
-B = Stack.BUILDING_2
-T1 = Stack.TREE_1
-T2 = Stack.TREE_2
-T3 = Stack.TREE_3
-W = Stack.WATER_1
-F = Stack.FIELD_1
+M1 = Stack.MOUNT1
+M2 = Stack.MOUNT2
+M3 = Stack.MOUNT3
+B = Stack.BUILD2
+T1 = Stack.TREES1
+T2 = Stack.TREES2
+T3 = Stack.TREES3
+W = Stack.WATER1
+F = Stack.FIELD1
 
 
 cards = frozenset(
