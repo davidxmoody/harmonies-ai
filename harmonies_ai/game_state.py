@@ -160,11 +160,12 @@ class GameState:
 
     def __rich__(self):
         hex_template = [
-            " ####### ",
-            "##ccccc##",
-            "##bbbbb##",
-            "##aaaaa##",
-            " ####### ",
+            "  #########  ",
+            " ####DDD#### ",
+            "###ccCCCcc###",
+            "###bbBBBbb###",
+            " ##aaAAAaa## ",
+            "  #########  ",
         ]
 
         hex_height, hex_width = len(hex_template), len(hex_template[0])
@@ -186,22 +187,23 @@ class GameState:
             layers = {
                 " ": background,
                 "#": empty,
-                "a": (
-                    Text(" ", style=f"on {stack.components[0].bg}")
-                    if len(stack.components) > 0
-                    else empty
-                ),
-                "b": (
-                    Text(" ", style=f"on {stack.components[1].bg}")
-                    if len(stack.components) > 1
-                    else empty
-                ),
-                "c": (
-                    Text(" ", style=f"on {stack.components[2].bg}")
-                    if len(stack.components) > 2
-                    else empty
-                ),
+                "a": empty,
+                "A": empty,
+                "b": empty,
+                "B": empty,
+                "c": empty,
+                "C": empty,
+                "D": empty,
             }
+
+            for i, token in enumerate(stack.components):
+                labels = [("a", "A"), ("b", "B"), ("c", "C")][i]
+                for label in labels:
+                    layers[label] = Text(" ", style=f"on {token.bg}")
+
+            if cube:
+                label = ["A", "B", "C", "D"][len(stack.components)]
+                layers[label] = Text(" ", style="on #E67C20")
 
             for y in range(hex_height):
                 for x in range(hex_width):
