@@ -26,7 +26,7 @@ class Token(Enum):
         return self.name
 
     def __rich__(self):
-        return Text(self.name, style=f"{self.fg} on {self.bg}")
+        return Text(f" {self.name} ", style=f"{self.fg} on {self.bg}")
 
 
 class Stack(Enum):

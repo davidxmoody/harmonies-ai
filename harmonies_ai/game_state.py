@@ -1,8 +1,8 @@
 from typing import Counter, NamedTuple
 from random import choice, choices
 from harmonies_ai.cards import AnimalCard, cards
+from harmonies_ai.rich_canvas import RichCanvas
 from harmonies_ai.tokens import Stack, Token
-from rich.text import Text
 
 GridPosition = int
 Grid = list
@@ -11,15 +11,15 @@ grid_size = 23
 
 def to_doubled_coords(position: GridPosition):
     if 0 <= position < 5:
-        return (0, position * 2)
+        return (position * 2, 0)
     elif 5 <= position < 9:
-        return (1, (position - 5) * 2 + 1)
+        return ((position - 5) * 2 + 1, 1)
     elif 9 <= position < 14:
-        return (2, (position - 9) * 2)
+        return ((position - 9) * 2, 2)
     elif 14 <= position < 18:
-        return (3, (position - 14) * 2 + 1)
+        return ((position - 14) * 2 + 1, 3)
     elif 18 <= position < 23:
-        return (4, (position - 18) * 2)
+        return ((position - 18) * 2, 4)
     else:
         raise Exception("Position out of bounds")
 
@@ -159,6 +159,14 @@ class GameState:
         self._refresh_display()
 
     def __rich__(self):
+        canvas = RichCanvas()
+
+        for gi, group in enumerate(self.display_tokens):
+            for ti, token in enumerate(group):
+                canvas.fill(token.bg, (0, 4 + gi * 24 + ti * 6), (1, 5))
+
+        canvas.advance_origin()
+
         hex_template = [
             "  #########  ",
             " ####DDD#### ",
@@ -170,22 +178,16 @@ class GameState:
 
         hex_height, hex_width = len(hex_template), len(hex_template[0])
 
-        background = Text(" ", style="on #997C54")
-
-        chars: list[list[str | Text]] = [
-            [background for _ in range(hex_width * 5 + 8)]
-            for _ in range(hex_height * 5 + 6)
-        ]
+        canvas.fill("#997C54", (0, 0), (hex_height * 5 + 6, hex_width * 5 + 8))
 
         for i, (stack, cube) in enumerate(zip(self.board, self.cubes)):
-            hex_x, hex_yd = to_doubled_coords(i)
-            start_x = 2 + hex_x * (hex_width + 1)
+            hex_yd, hex_x = to_doubled_coords(i)
             start_y = 1 + hex_yd * (hex_height + 1) // 2
+            start_x = 2 + hex_x * (hex_width + 1)
 
-            empty = Text(" ", style="on #EDCD9C")
+            empty = "#EDCD9C"
 
             layers = {
-                " ": background,
                 "#": empty,
                 "a": empty,
                 "A": empty,
@@ -199,14 +201,17 @@ class GameState:
             for i, token in enumerate(stack.components):
                 labels = [("a", "A"), ("b", "B"), ("c", "C")][i]
                 for label in labels:
-                    layers[label] = Text(" ", style=f"on {token.bg}")
+                    layers[label] = token.bg
 
             if cube:
                 label = ["A", "B", "C", "D"][len(stack.components)]
-                layers[label] = Text(" ", style="on #E67C20")
+                layers[label] = "#E67C20"
 
             for y in range(hex_height):
                 for x in range(hex_width):
-                    chars[start_y + y][start_x + x] = layers[hex_template[y][x]]
+                    if hex_template[y][x] != " ":
+                        canvas.draw(
+                            layers[hex_template[y][x]], (start_y + y, start_x + x)
+                        )
 
-        return Text("\n").join(Text.assemble(*line) for line in chars)
+        return canvas
