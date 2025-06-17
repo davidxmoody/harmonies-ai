@@ -1,11 +1,27 @@
 from typing import Counter, NamedTuple
 from random import choice, choices
 from harmonies_ai.cards import AnimalCard, cards
-from harmonies_ai.tokens import Stack, Token, placements
+from harmonies_ai.tokens import Stack, Token
+from rich.text import Text
 
 GridPosition = int
 Grid = list
 grid_size = 23
+
+
+def to_doubled_coords(position: GridPosition):
+    if 0 <= position < 5:
+        return (0, position * 2)
+    elif 5 <= position < 9:
+        return (1, (position - 5) * 2 + 1)
+    elif 9 <= position < 14:
+        return (2, (position - 9) * 2)
+    elif 14 <= position < 18:
+        return (3, (position - 14) * 2 + 1)
+    elif 18 <= position < 23:
+        return (4, (position - 18) * 2)
+    else:
+        raise Exception("Position out of bounds")
 
 
 class PlaceTokenAction(NamedTuple):
@@ -43,12 +59,12 @@ class GameState:
     def __init__(self):
         self.supply_tokens = Counter(
             {
-                Token.GRAY: 23,
+                Token.GRY: 23,
                 Token.RED: 15,
-                Token.BROWN: 21,
-                Token.GREEN: 19,
-                Token.BLUE: 23,
-                Token.YELLOW: 19,
+                Token.BRN: 21,
+                Token.GRN: 19,
+                Token.BLU: 23,
+                Token.YLW: 19,
             }
         )
 
@@ -59,7 +75,7 @@ class GameState:
 
         self.cards = {}
         self.cubes = [False] * grid_size
-        self.board = [Stack.EMPTY] * grid_size
+        self.board = [Stack.EMPTY0] * grid_size
 
     def _draw_token(self):
         token = choices(
@@ -83,13 +99,10 @@ class GameState:
             self.display_cards.add(self._draw_card())
 
     def _place_token(self, token: Token, position: GridPosition):
-        existing_stack = self.board[position]
-        valid_placements = placements.get(existing_stack, None)
-
-        if valid_placements is None or token not in valid_placements:
-            raise Exception(f"Cannot place {token} on {existing_stack}")
-
-        self.board[position] = valid_placements[token]
+        stack = self.board[position]
+        if token not in stack.placements:
+            raise Exception(f"Cannot place {token} on {stack}")
+        self.board[position] = stack.placements[token]
 
     def _take_card(self, card: AnimalCard):
         if len(self.cards) >= 4:
@@ -144,3 +157,54 @@ class GameState:
                 self._place_cube(a.card, a.position)
 
         self._refresh_display()
+
+    def __rich__(self):
+        hex_template = [
+            " ####### ",
+            "##ccccc##",
+            "##bbbbb##",
+            "##aaaaa##",
+            " ####### ",
+        ]
+
+        hex_height, hex_width = len(hex_template), len(hex_template[0])
+
+        background = Text(" ", style="on #997C54")
+
+        chars: list[list[str | Text]] = [
+            [background for _ in range(hex_width * 5 + 8)]
+            for _ in range(hex_height * 5 + 6)
+        ]
+
+        for i, (stack, cube) in enumerate(zip(self.board, self.cubes)):
+            hex_x, hex_yd = to_doubled_coords(i)
+            start_x = 2 + hex_x * (hex_width + 1)
+            start_y = 1 + hex_yd * (hex_height + 1) // 2
+
+            empty = Text(" ", style="on #EDCD9C")
+
+            layers = {
+                " ": background,
+                "#": empty,
+                "a": (
+                    Text(" ", style=f"on {stack.components[0].bg}")
+                    if len(stack.components) > 0
+                    else empty
+                ),
+                "b": (
+                    Text(" ", style=f"on {stack.components[1].bg}")
+                    if len(stack.components) > 1
+                    else empty
+                ),
+                "c": (
+                    Text(" ", style=f"on {stack.components[2].bg}")
+                    if len(stack.components) > 2
+                    else empty
+                ),
+            }
+
+            for y in range(hex_height):
+                for x in range(hex_width):
+                    chars[start_y + y][start_x + x] = layers[hex_template[y][x]]
+
+        return Text("\n").join(Text.assemble(*line) for line in chars)
