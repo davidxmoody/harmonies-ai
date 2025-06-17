@@ -50,11 +50,22 @@ class GameState:
     supply_cards: set[AnimalCard]
 
     display_tokens: tuple[tuple[Token, ...], ...]
-    display_cards: set[AnimalCard]
+    display_cards: list[AnimalCard]
 
     cards: dict[AnimalCard, int]
     cubes: Grid[bool]
     board: Grid[Stack]
+
+    @classmethod
+    def random(cls):
+        instance = cls()
+        for _ in range(40):
+            instance.board[choice(range(grid_size))] = choice(list(Stack))
+        for _ in range(15):
+            pos = choice(range(grid_size))
+            if instance.board[pos] != Stack.EMPTY0:
+                instance.cubes[pos] = True
+        return instance
 
     def __init__(self):
         self.supply_tokens = Counter(
@@ -69,7 +80,7 @@ class GameState:
         )
 
         self.supply_cards = set(cards)
-        self.display_cards = set()
+        self.display_cards = []
 
         self._refresh_display()
 
@@ -96,7 +107,7 @@ class GameState:
             tuple(sorted(self._draw_token() for _ in range(3))) for _ in range(3)
         )
         while len(self.display_cards) < 4:
-            self.display_cards.add(self._draw_card())
+            self.display_cards.append(self._draw_card())
 
     def _place_token(self, token: Token, position: GridPosition):
         stack = self.board[position]
@@ -159,13 +170,24 @@ class GameState:
         self._refresh_display()
 
     def __rich__(self):
+        board_bg = "#997C54"
+        board_empty = "#EDCD9C"
+        cube_bg = "#E67C20"
+
         canvas = RichCanvas()
+
+        for ci, card in enumerate(self.display_cards[0:1]):
+            for ti, token in enumerate(card.base.components):
+                canvas.fill(token.bg, (4 - ti, 0), (1, 7))
+            canvas.fill(cube_bg, (4 - len(card.base.components), 2), (1, 3))
+
+        canvas.advance_origin(2)
 
         for gi, group in enumerate(self.display_tokens):
             for ti, token in enumerate(group):
                 canvas.fill(token.bg, (0, 4 + gi * 24 + ti * 6), (1, 5))
 
-        canvas.advance_origin()
+        canvas.advance_origin(2)
 
         hex_template = [
             "  #########  ",
@@ -178,24 +200,22 @@ class GameState:
 
         hex_height, hex_width = len(hex_template), len(hex_template[0])
 
-        canvas.fill("#997C54", (0, 0), (hex_height * 5 + 6, hex_width * 5 + 8))
+        canvas.fill(board_bg, (0, 0), (hex_height * 5 + 6, hex_width * 5 + 8))
 
         for i, (stack, cube) in enumerate(zip(self.board, self.cubes)):
             hex_yd, hex_x = to_doubled_coords(i)
             start_y = 1 + hex_yd * (hex_height + 1) // 2
             start_x = 2 + hex_x * (hex_width + 1)
 
-            empty = "#EDCD9C"
-
             layers = {
-                "#": empty,
-                "a": empty,
-                "A": empty,
-                "b": empty,
-                "B": empty,
-                "c": empty,
-                "C": empty,
-                "D": empty,
+                "#": board_empty,
+                "a": board_empty,
+                "A": board_empty,
+                "b": board_empty,
+                "B": board_empty,
+                "c": board_empty,
+                "C": board_empty,
+                "D": board_empty,
             }
 
             for i, token in enumerate(stack.components):
@@ -205,7 +225,7 @@ class GameState:
 
             if cube:
                 label = ["A", "B", "C", "D"][len(stack.components)]
-                layers[label] = "#E67C20"
+                layers[label] = cube_bg
 
             for y in range(hex_height):
                 for x in range(hex_width):

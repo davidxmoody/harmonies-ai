@@ -9,9 +9,9 @@ class RichCanvas:
         self.origin = 0
         self.pixels = {}
 
-    def advance_origin(self):
-        y_max = max(y for y, _ in self.pixels)
-        self.origin = y_max + 2
+    def advance_origin(self, extra_space: int):
+        y_max = max((y for y, _ in self.pixels), default=0)
+        self.origin = y_max + 1 + extra_space
 
     def draw(self, color: str, pos: tuple[int, int]):
         y, x = pos[0] + self.origin, pos[1]
