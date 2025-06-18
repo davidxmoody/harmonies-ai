@@ -1,6 +1,6 @@
 from typing import Counter, NamedTuple
 from random import choice, choices
-from harmonies_ai.cards import AnimalCard, cards
+from harmonies_ai.cards import AnimalCard
 from harmonies_ai.rich_canvas import RichCanvas
 from harmonies_ai.tokens import Stack, Token
 
@@ -79,7 +79,7 @@ class GameState:
             }
         )
 
-        self.supply_cards = set(cards)
+        self.supply_cards = set(AnimalCard)
         self.display_cards = []
 
         self._refresh_display()
