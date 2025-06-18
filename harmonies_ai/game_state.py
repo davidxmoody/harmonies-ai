@@ -1,7 +1,7 @@
 from typing import Counter, NamedTuple
 from random import choice, choices
 from harmonies_ai.cards import AnimalCard
-from harmonies_ai.rich_canvas import RichCanvas
+from harmonies_ai.rich_canvas import Color, RichCanvas
 from harmonies_ai.tokens import Stack, Token
 
 GridPosition = int
@@ -176,16 +176,71 @@ class GameState:
 
         canvas = RichCanvas()
 
-        for ci, card in enumerate(self.display_cards[0:1]):
-            for ti, token in enumerate(card.base.components):
-                canvas.fill(token.bg, (4 - ti, 0), (1, 7))
-            canvas.fill(cube_bg, (4 - len(card.base.components), 2), (1, 3))
+        pattern_templates = {
+            "pair": [
+                "             ",
+                "        D    ",
+                "   ggg cCc   ",
+                "   fff bBb   ",
+                "   eee aaa   ",
+                "             ",
+                "             ",
+            ],
+            "triangle": [
+                "             ",
+                "   fff  D    ",
+                "   eee cCc   ",
+                "       bBb   ",
+                "   fff aaa   ",
+                "   eee       ",
+                "             ",
+            ],
+            "spread": [
+                "             ",
+                "      C      ",
+                "     bBb     ",
+                "     aaa     ",
+                " eee     eee ",
+                "     eee     ",
+                "             ",
+            ],
+            "boomerang": [
+                "             ",
+                "      D      ",
+                "     cCc     ",
+                "     bBb     ",
+                " fff aaa fff ",
+                " eee     eee ",
+                "             ",
+            ],
+            "line": [
+                "             ",
+                "          D  ",
+                " jjj ggg cCc ",
+                " iii fff bBb ",
+                " hhh eee aaa ",
+                "             ",
+                "             ",
+            ],
+        }
+
+        for ci, card in enumerate(self.display_cards):
+            labels = dict[str, Color]({c: board_empty for c in " abcdefghij"})
+            labels.update(zip("abc", card.reqs[0].components))
+            labels.update(zip("efg", card.reqs[1].components))
+            if len(card.reqs) > 2:
+                labels.update(zip("hij", card.reqs[2].components))
+            labels["BCD"[len(card.reqs[0].components) - 1]] = cube_bg
+
+            canvas.draw_template(
+                (0, 3 + 18 * ci), pattern_templates[card.shape], labels
+            )
 
         canvas.advance_origin(2)
 
         for gi, group in enumerate(self.display_tokens):
             for ti, token in enumerate(group):
-                canvas.fill(token.bg, (0, 4 + gi * 24 + ti * 6), (1, 5))
+                canvas.draw_rect((0, 3 + gi * 25 + ti * 6), (1, 5), token.bg)
 
         canvas.advance_origin(2)
 
@@ -200,7 +255,7 @@ class GameState:
 
         hex_height, hex_width = len(hex_template), len(hex_template[0])
 
-        canvas.fill(board_bg, (0, 0), (hex_height * 5 + 6, hex_width * 5 + 8))
+        canvas.draw_rect((0, 0), (hex_height * 5 + 6, hex_width * 5 + 8), board_bg)
 
         for i, (stack, cube) in enumerate(zip(self.board, self.cubes)):
             hex_yd, hex_x = to_doubled_coords(i)
@@ -210,28 +265,19 @@ class GameState:
             layers = {
                 "#": board_empty,
                 "a": board_empty,
-                "A": board_empty,
                 "b": board_empty,
-                "B": board_empty,
                 "c": board_empty,
-                "C": board_empty,
-                "D": board_empty,
+                "d": board_empty,
             }
 
             for i, token in enumerate(stack.components):
-                labels = [("a", "A"), ("b", "B"), ("c", "C")][i]
-                for label in labels:
-                    layers[label] = token.bg
+                label = ["a", "b", "c", "d"][i]
+                layers[label] = token.bg
 
             if cube:
                 label = ["A", "B", "C", "D"][len(stack.components)]
                 layers[label] = cube_bg
 
-            for y in range(hex_height):
-                for x in range(hex_width):
-                    if hex_template[y][x] != " ":
-                        canvas.draw(
-                            layers[hex_template[y][x]], (start_y + y, start_x + x)
-                        )
+            canvas.draw_template((start_y, start_x), hex_template, layers)
 
         return canvas
