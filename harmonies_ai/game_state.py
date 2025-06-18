@@ -250,8 +250,9 @@ class GameState:
         canvas.advance_origin(2)
 
         for gi, group in enumerate(self.display_tokens):
+            canvas.draw_rect((0, 2 + gi * 24), (3, 21), board_empty)
             for ti, token in enumerate(group):
-                canvas.draw_rect((0, 3 + gi * 25 + ti * 6), (1, 5), token.bg)
+                canvas.draw_rect((1, 4 + gi * 24 + ti * 6), (1, 5), token.bg)
 
         canvas.advance_origin(2)
 
@@ -260,7 +261,7 @@ class GameState:
             " ####DDD#### ",
             "###ccCCCcc###",
             "###bbBBBbb###",
-            " ##aaAAAaa## ",
+            " ##aaaaaaa## ",
             "  #########  ",
         ]
 
@@ -273,22 +274,11 @@ class GameState:
             start_y = 1 + hex_yd * (hex_height + 1) // 2
             start_x = 2 + hex_x * (hex_width + 1)
 
-            layers = {
-                "#": board_empty,
-                "a": board_empty,
-                "b": board_empty,
-                "c": board_empty,
-                "d": board_empty,
-            }
-
-            for i, token in enumerate(stack.components):
-                label = ["a", "b", "c", "d"][i]
-                layers[label] = token.bg
-
+            labels = dict[str, Pixel]({c: board_empty for c in "#abcd"})
+            labels.update(zip("abc", stack.components))
             if cube:
-                label = ["A", "B", "C", "D"][len(stack.components)]
-                layers[label] = cube_bg
+                labels["BCD"[len(stack.components) - 1]] = cube_bg
 
-            canvas.draw_template((start_y, start_x), hex_template, layers)
+            canvas.draw_template((start_y, start_x), hex_template, labels)
 
         return canvas
