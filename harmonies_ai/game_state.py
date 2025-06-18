@@ -1,7 +1,7 @@
 from typing import Counter, NamedTuple
 from random import choice, choices
 from harmonies_ai.cards import AnimalCard
-from harmonies_ai.rich_canvas import Color, RichCanvas
+from harmonies_ai.rich_canvas import Pixel, RichCanvas
 from harmonies_ai.tokens import Stack, Token
 
 GridPosition = int
@@ -225,16 +225,27 @@ class GameState:
         }
 
         for ci, card in enumerate(self.display_cards):
-            labels = dict[str, Color]({c: board_empty for c in " abcdefghij"})
+            labels = dict[str, Pixel]({c: board_empty for c in " abcdefghij"})
             labels.update(zip("abc", card.reqs[0].components))
             labels.update(zip("efg", card.reqs[1].components))
             if len(card.reqs) > 2:
                 labels.update(zip("hij", card.reqs[2].components))
             labels["BCD"[len(card.reqs[0].components) - 1]] = cube_bg
 
-            canvas.draw_template(
-                (0, 3 + 18 * ci), pattern_templates[card.shape], labels
+            card_left = 3 + 18 * ci
+
+            canvas.draw_template((0, card_left), pattern_templates[card.shape], labels)
+
+            canvas.draw_text(
+                (7, card_left), card.name.center(13), bg=board_empty, fg="black"
             )
+            canvas.draw_text(
+                (8, card_left),
+                " ".join(str(r) for r in card.rewards).center(13),
+                bg=board_empty,
+                fg="black",
+            )
+            canvas.draw_rect((9, card_left), (1, 13), board_empty)
 
         canvas.advance_origin(2)
 
