@@ -1,20 +1,21 @@
-[project]
+[tool.poetry]
 name = "harmonies-ai"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "David Moody",email = "david@davidxmoody.com"}
-]
+authors = ["David Moody <david@davidxmoody.com>"]
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "ipython (>=9.3.0,<10.0.0)",
-    "plotly (>=6.1.2,<7.0.0)",
-    "pandas (>=2.2.3,<3.0.0)",
-    "torch (>=2.7.0,<3.0.0)",
-    "rich (>=14.0.0,<15.0.0)"
-]
 
+[tool.poetry.dependencies]
+python = ">=3.12"
+ipython = ">=9.3.0,<10.0.0"
+plotly = ">=6.1.2,<7.0.0"
+pandas = ">=2.2.3,<3.0.0"
+torch = ">=2.7.0,<3.0.0"
+rich = ">=14.0.0,<15.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.4.1,<9.0.0"
+pytest-watch = ">=4.2.0,<5.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

@@ -1,27 +1,36 @@
 from typing import Counter, NamedTuple
 from random import choice, choices
 from harmonies_ai.cards import AnimalCard
+from harmonies_ai.grid import (
+    Grid,
+    GridPosition,
+    grid_size,
+    doubled_coords,
+    grid_adjacent,
+)
 from harmonies_ai.rich_canvas import Pixel, RichCanvas
 from harmonies_ai.tokens import Stack, Token
 
-GridPosition = int
-Grid = list
-grid_size = 23
 
+class Score(NamedTuple):
+    trees: int
+    mountains: int
+    fields: int
+    buildings: int
+    water: int
+    cards: tuple[int, ...]
 
-def to_doubled_coords(position: GridPosition):
-    if 0 <= position < 5:
-        return (position * 2, 0)
-    elif 5 <= position < 9:
-        return ((position - 5) * 2 + 1, 1)
-    elif 9 <= position < 14:
-        return ((position - 9) * 2, 2)
-    elif 14 <= position < 18:
-        return ((position - 14) * 2 + 1, 3)
-    elif 18 <= position < 23:
-        return ((position - 18) * 2, 4)
-    else:
-        raise Exception("Position out of bounds")
+    @property
+    def stacks_subtotal(self):
+        return self.trees + self.mountains + self.fields + self.buildings + self.water
+
+    @property
+    def cards_subtotal(self):
+        return sum(self.cards)
+
+    @property
+    def total(self):
+        return self.stacks_subtotal + self.cards_subtotal
 
 
 class PlaceTokenAction(NamedTuple):
@@ -57,10 +66,10 @@ class GameState:
     board: Grid[Stack]
 
     @classmethod
-    def random(cls):
+    def random(cls, stack_options=list(Stack)):
         instance = cls()
         for _ in range(40):
-            instance.board[choice(range(grid_size))] = choice(list(Stack))
+            instance.board[choice(range(grid_size))] = choice(stack_options)
         for _ in range(15):
             pos = choice(range(grid_size))
             if instance.board[pos] != Stack.EMPTY0:
@@ -169,6 +178,96 @@ class GameState:
 
         self._refresh_display()
 
+    def get_adjacent_tokens(self, pos: GridPosition):
+        return {
+            self.board[adj_pos].components[-1]
+            for adj_pos in grid_adjacent[pos]
+            if self.board[adj_pos] != Stack.EMPTY0
+        }
+
+    def find_groups(self, stack: Stack):
+        matching = {pos for pos, s in enumerate(self.board) if s == stack}
+        groups: list[set[int]] = []
+
+        while matching:
+            first_item = matching.pop()
+            current_group = {first_item}
+            frontier = {pos for pos in grid_adjacent[first_item] if pos in matching}
+
+            while frontier:
+                next_item = frontier.pop()
+                current_group.add(next_item)
+                matching.remove(next_item)
+                frontier.update(
+                    pos for pos in grid_adjacent[next_item] if pos in matching
+                )
+
+            groups.append(current_group)
+
+        return groups
+
+    def find_longest_river(self):
+        longest_river = 0
+
+        for group in self.find_groups(Stack.WATER1):
+            for start in group:
+                length = 0
+                explored = set[int]()
+                frontier = {start}
+
+                while frontier:
+                    length += 1
+                    explored.update(frontier)
+                    frontier = {
+                        apos
+                        for pos in frontier
+                        for apos in grid_adjacent[pos]
+                        if apos in group and apos not in explored
+                    }
+
+                longest_river = max(longest_river, length)
+
+        return longest_river
+
+    @property
+    def score(self):
+        tree_scoring = {Stack.TREES1: 1, Stack.TREES2: 3, Stack.TREES3: 7}
+        trees = sum(
+            tree_scoring[stack] for stack in self.board if stack in tree_scoring
+        )
+
+        mountain_scoring = {Stack.MOUNT1: 1, Stack.MOUNT2: 3, Stack.MOUNT3: 7}
+        mountains = sum(
+            mountain_scoring[stack]
+            for pos, stack in enumerate(self.board)
+            if stack in mountain_scoring and Token.GRY in self.get_adjacent_tokens(pos)
+        )
+
+        fields = 5 * sum(len(group) >= 2 for group in self.find_groups(Stack.FIELD1))
+
+        buildings = 5 * sum(
+            len(self.get_adjacent_tokens(pos)) >= 3
+            for pos, stack in enumerate(self.board)
+            if stack == Stack.BUILD2
+        )
+
+        water_scoring = [0, 0, 2, 5, 8, 11, 15]
+        longest_river = self.find_longest_river()
+        water = (
+            water_scoring[longest_river]
+            if longest_river < len(water_scoring)
+            else water_scoring[-1] + 4 * (longest_river - len(water_scoring) + 1)
+        )
+
+        return Score(
+            trees=trees,
+            mountains=mountains,
+            fields=fields,
+            buildings=buildings,
+            water=water,
+            cards=(),
+        )
+
     def __rich__(self):
         board_bg = "#997C54"
         board_empty = "#EDCD9C"
@@ -257,12 +356,12 @@ class GameState:
         canvas.advance_origin(2)
 
         hex_template = [
-            "  #########  ",
-            " ####DDD#### ",
-            "###ccCCCcc###",
-            "###bbBBBbb###",
-            " ##aaaaaaa## ",
-            "  #########  ",
+            "  ..........  ",
+            " .....DD..... ",
+            "....ccCCcc....",
+            "....bbBBbb....",
+            " ...aaaaaa... ",
+            "  ..........  ",
         ]
 
         hex_height, hex_width = len(hex_template), len(hex_template[0])
@@ -270,15 +369,18 @@ class GameState:
         canvas.draw_rect((0, 0), (hex_height * 5 + 6, hex_width * 5 + 8), board_bg)
 
         for i, (stack, cube) in enumerate(zip(self.board, self.cubes)):
-            hex_yd, hex_x = to_doubled_coords(i)
+            hex_yd, hex_x = doubled_coords[i]
             start_y = 1 + hex_yd * (hex_height + 1) // 2
             start_x = 2 + hex_x * (hex_width + 1)
 
-            labels = dict[str, Pixel]({c: board_empty for c in "#abcd"})
+            labels = dict[str, Pixel]({c: board_empty for c in ".abcd"})
             labels.update(zip("abc", stack.components))
             if cube:
                 labels["BCD"[len(stack.components) - 1]] = cube_bg
 
             canvas.draw_template((start_y, start_x), hex_template, labels)
+            canvas.draw_text(
+                (start_y + 5, start_x + 6), str(i).rjust(2, "0"), board_empty, board_bg
+            )
 
         return canvas
