@@ -341,6 +341,11 @@ class GameState:
             ],
         }
 
+        for gi, group in enumerate(self.display_tokens):
+            canvas.draw_rect((gi * 4, 2), (3, 15), board_empty)
+            for ti, token in enumerate(group):
+                canvas.draw_rect((1 + gi * 4, 4 + ti * 4), (1, 3), token.bg)
+
         for ci, card in enumerate(self.display_cards):
             labels = dict[str, Pixel]({c: board_empty for c in " abcdefghij"})
             labels.update(zip("abc", card.base.components))
@@ -349,7 +354,7 @@ class GameState:
                 labels.update(zip("hij", card.reqs[1].components))
             labels["BCD"[len(card.base.components) - 1]] = cube_bg
 
-            card_left = 3 + 18 * ci
+            card_left = 19 + 15 * ci
 
             canvas.draw_template((0, card_left), pattern_templates[card.shape], labels)
 
@@ -364,14 +369,7 @@ class GameState:
             )
             canvas.draw_rect((9, card_left), (1, 13), board_empty)
 
-        canvas.advance_origin(2)
-
-        for gi, group in enumerate(self.display_tokens):
-            canvas.draw_rect((0, 2 + gi * 24), (3, 21), board_empty)
-            for ti, token in enumerate(group):
-                canvas.draw_rect((1, 4 + gi * 24 + ti * 6), (1, 5), token.bg)
-
-        canvas.advance_origin(2)
+        canvas.advance_origin(1)
 
         hex_template = [
             "  ..........  ",
