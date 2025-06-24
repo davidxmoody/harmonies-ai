@@ -1,12 +1,14 @@
 from typing import Counter, NamedTuple
-from random import choice, choices
+from random import choice, choices, sample
 from harmonies_ai.cards import AnimalCard
 from harmonies_ai.grid import (
     Grid,
     GridPosition,
+    Shape,
     grid_size,
     doubled_coords,
     grid_adjacent,
+    shape_rotations,
 )
 from harmonies_ai.rich_canvas import Pixel, RichCanvas
 from harmonies_ai.tokens import Stack, Token
@@ -35,7 +37,7 @@ class Score(NamedTuple):
 
 class PlaceTokenAction(NamedTuple):
     token: Token
-    position: GridPosition
+    pos: GridPosition
 
 
 class TakeCardAction(NamedTuple):
@@ -48,7 +50,7 @@ class DiscardCardAction(NamedTuple):
 
 class PlaceCubeAction(NamedTuple):
     card: AnimalCard
-    position: GridPosition
+    pos: GridPosition
 
 
 Action = PlaceTokenAction | TakeCardAction | PlaceCubeAction
@@ -66,12 +68,11 @@ class GameState:
     board: Grid[Stack]
 
     @classmethod
-    def random(cls, stack_options=list(Stack)):
+    def random(cls, stack_options=list(Stack), num_stacks=20, num_cubes=10):
         instance = cls()
-        for _ in range(40):
-            instance.board[choice(range(grid_size))] = choice(stack_options)
-        for _ in range(15):
-            pos = choice(range(grid_size))
+        for pos in sample(range(grid_size), k=num_stacks):
+            instance.board[pos] = choice(stack_options)
+        for pos in sample(range(grid_size), k=num_cubes):
             if instance.board[pos] != Stack.EMPTY0:
                 instance.cubes[pos] = True
         return instance
@@ -118,11 +119,11 @@ class GameState:
         while len(self.display_cards) < 4:
             self.display_cards.append(self._draw_card())
 
-    def _place_token(self, token: Token, position: GridPosition):
-        stack = self.board[position]
+    def _place_token(self, token: Token, pos: GridPosition):
+        stack = self.board[pos]
         if token not in stack.placements:
             raise Exception(f"Cannot place {token} on {stack}")
-        self.board[position] = stack.placements[token]
+        self.board[pos] = stack.placements[token]
 
     def _take_card(self, card: AnimalCard):
         if len(self.cards) >= 4:
@@ -137,21 +138,27 @@ class GameState:
             raise Exception("Card not in display")
         self.display_cards.remove(card)
 
-    def can_place_cube(self, card: AnimalCard, position: GridPosition):
-        pass # TODO
+    def could_place_cube(self, card: AnimalCard, pos: GridPosition):
+        if self.board[pos] != card.base:
+            return False
 
+        return any(
+            all(self.board[p] == card.reqs[v] for p, v in rotation.items())
+            for rotation in shape_rotations[card.shape][pos]
+        )
 
-    def _place_cube(self, card: AnimalCard, position: GridPosition):
+    def _place_cube(self, card: AnimalCard, pos: GridPosition):
         if card not in self.cards:
             raise Exception("Card not in available cards")
-        if self.cubes[position]:
+        if self.cards[card] == 0:
+            raise Exception("No cubes left on that card")
+        if self.cubes[pos]:
             raise Exception("Cube already placed at that position")
 
-        can_be_placed = True  # TODO
-        if not can_be_placed:
+        if not self.could_place_cube(card, pos):
             raise Exception("Requirements for animal card are not met")
 
-        self.cubes[position] = True
+        self.cubes[pos] = True
         self.cards[card] -= 1
         if self.cards[card] == 0:
             del self.cards[card]
@@ -172,13 +179,13 @@ class GameState:
 
         for a in actions:
             if isinstance(a, PlaceTokenAction):
-                self._place_token(a.token, a.position)
+                self._place_token(a.token, a.pos)
             elif isinstance(a, TakeCardAction):
                 self._take_card(a.card)
             elif isinstance(a, DiscardCardAction):
                 self._discard_card(a.card)
             elif isinstance(a, PlaceCubeAction):
-                self._place_cube(a.card, a.position)
+                self._place_cube(a.card, a.pos)
 
         self._refresh_display()
 
@@ -280,7 +287,7 @@ class GameState:
         canvas = RichCanvas()
 
         pattern_templates = {
-            "pair": [
+            Shape.PAIR: [
                 "             ",
                 "        D    ",
                 "   ggg cCc   ",
@@ -289,7 +296,7 @@ class GameState:
                 "             ",
                 "             ",
             ],
-            "triangle": [
+            Shape.TRIANGLE: [
                 "             ",
                 "   fff  D    ",
                 "   eee cCc   ",
@@ -298,7 +305,7 @@ class GameState:
                 "   eee       ",
                 "             ",
             ],
-            "diamond": [
+            Shape.DIAMOND: [
                 "             ",
                 "      C      ",
                 "     bBb     ",
@@ -307,7 +314,7 @@ class GameState:
                 "     eee     ",
                 "             ",
             ],
-            "boomerang": [
+            Shape.BOOMERANG: [
                 "             ",
                 "      D      ",
                 "     cCc     ",
@@ -316,7 +323,7 @@ class GameState:
                 " eee     eee ",
                 "             ",
             ],
-            "line": [
+            Shape.LINE: [
                 "             ",
                 "          D  ",
                 " jjj ggg cCc ",
@@ -329,11 +336,11 @@ class GameState:
 
         for ci, card in enumerate(self.display_cards):
             labels = dict[str, Pixel]({c: board_empty for c in " abcdefghij"})
-            labels.update(zip("abc", card.reqs[0].components))
-            labels.update(zip("efg", card.reqs[1].components))
-            if len(card.reqs) > 2:
-                labels.update(zip("hij", card.reqs[2].components))
-            labels["BCD"[len(card.reqs[0].components) - 1]] = cube_bg
+            labels.update(zip("abc", card.base.components))
+            labels.update(zip("efg", card.reqs[0].components))
+            if len(card.reqs) > 1:
+                labels.update(zip("hij", card.reqs[1].components))
+            labels["BCD"[len(card.base.components) - 1]] = cube_bg
 
             card_left = 3 + 18 * ci
 

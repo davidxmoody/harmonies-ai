@@ -70,7 +70,7 @@ def _rotate_shape(shape: Shape, pos: GridPosition):
             for hp, v in shape.positions.items()
         }
         if all(hp in doubled_coords for hp in rotated):
-            yield rotated
+            yield {doubled_coords.index(hp): v for hp, v in rotated.items()}
 
 
 # Maps shape then position to tuple of all rotated shapes that fit in grid
