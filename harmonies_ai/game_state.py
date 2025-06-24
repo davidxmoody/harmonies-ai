@@ -68,13 +68,20 @@ class GameState:
     board: Grid[Stack]
 
     @classmethod
-    def random(cls, stack_options=list(Stack), num_stacks=20, num_cubes=10):
+    def random(
+        cls,
+        stack_options=[s for s in Stack if s != Stack.EMPTY0],
+        num_stacks=20,
+        num_cubes=10,
+    ):
         instance = cls()
         for pos in sample(range(grid_size), k=num_stacks):
             instance.board[pos] = choice(stack_options)
-        for pos in sample(range(grid_size), k=num_cubes):
-            if instance.board[pos] != Stack.EMPTY0:
-                instance.cubes[pos] = True
+        for pos in sample(
+            [p for p, s in enumerate(instance.board) if s != Stack.EMPTY0],
+            k=num_cubes,
+        ):
+            instance.cubes[pos] = True
         return instance
 
     def __init__(self):
