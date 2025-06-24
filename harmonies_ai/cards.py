@@ -34,8 +34,8 @@ class AnimalCard(Enum):
     WOLF = ("triangle", (16, 10, 4), (T3, F))
     STINGRAY = ("triangle", (16, 10, 4), (W, M1))
     FLAMINGO = ("triangle", (16, 10, 4), (W, F))
-    BEE = ("spread", (18, 8), (T2, F))
-    RACOON = ("spread", (12, 6), (F, W))
+    BEE = ("diamond", (18, 8), (T2, F))
+    RACOON = ("diamond", (12, 6), (F, W))
     PENGUIN = ("boomerang", (16, 10, 4), (M1, W))
     PEACOCK = ("boomerang", (17, 10, 5), (B, W))
     MOUSE = ("boomerang", (17, 10, 5), (B, F))
@@ -72,7 +72,7 @@ class AnimalCard(Enum):
     #     return cls(base, ((1, 0, req), (0, 1, req)), rewards)
 
     # @classmethod
-    # def spread(cls, base: Stack, req: Stack, rewards: tuple[int, ...]):
+    # def diamond(cls, base: Stack, req: Stack, rewards: tuple[int, ...]):
     #     return cls(base, ((1, 0, req), (0, 1, req), (-1, 1, req)), rewards)
 
     # @classmethod

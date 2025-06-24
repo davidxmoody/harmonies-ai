@@ -137,6 +137,10 @@ class GameState:
             raise Exception("Card not in display")
         self.display_cards.remove(card)
 
+    def can_place_cube(self, card: AnimalCard, position: GridPosition):
+        pass # TODO
+
+
     def _place_cube(self, card: AnimalCard, position: GridPosition):
         if card not in self.cards:
             raise Exception("Card not in available cards")
@@ -294,7 +298,7 @@ class GameState:
                 "   eee       ",
                 "             ",
             ],
-            "spread": [
+            "diamond": [
                 "             ",
                 "      C      ",
                 "     bBb     ",
