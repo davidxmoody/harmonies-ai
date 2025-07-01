@@ -1,8 +1,5 @@
 from random import choice
 from harmonies_ai.game_state import GameState
-from rich.console import Console
-
-console = Console()
 
 
 def simulate_game(gs: GameState):
@@ -15,13 +12,3 @@ def simulate_game(gs: GameState):
             gs.place_token(token, pos)
         gs.end_turn()
     return gs
-
-
-def main():
-    gs = GameState()
-    simulate_game(gs)
-    console.print(gs)
-
-
-if __name__ == "__main__":
-    main()

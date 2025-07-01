@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Counter, NamedTuple
 from random import choice, choices, sample
 from harmonies_ai.cards import AnimalCard
@@ -87,6 +88,9 @@ class GameState:
             instance.cubes[pos] = True
         return instance
 
+    def copy(self):
+        return deepcopy(self)
+
     def __init__(self):
         self._placed_tokens = ()
         self._taken_card = False
@@ -147,6 +151,7 @@ class GameState:
             raise Exception(f"Cannot place {token} on {stack}")
         self.board[pos] = stack.placements[token]
         self._placed_tokens = new_placed_tokens
+        return self
 
     def take_card(self, card: AnimalCard):
         if self._taken_card:
@@ -158,6 +163,7 @@ class GameState:
         self.cards[card] = card.num_cubes
         self.display_cards.remove(card)
         self._taken_card = True
+        return self
 
     def discard_card(self, card: AnimalCard):
         if self._taken_card:
@@ -166,6 +172,7 @@ class GameState:
             raise Exception("Card not in display")
         self.display_cards.remove(card)
         self._taken_card = True
+        return self
 
     def could_place_cube(self, card: AnimalCard, pos: GridPosition):
         if self.board[pos] != card.base:
@@ -188,6 +195,7 @@ class GameState:
         self.cards[card] -= 1
         if self.cards[card] == 0:
             del self.cards[card]
+        return self
 
     def end_turn(self):
         if len(self._placed_tokens) != 3:
@@ -195,6 +203,7 @@ class GameState:
         self._placed_tokens = ()
         self._taken_card = False
         self._refresh_display()
+        return self
 
     def get_adjacent_tokens(self, pos: GridPosition):
         return {
