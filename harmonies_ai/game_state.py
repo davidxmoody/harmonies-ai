@@ -57,6 +57,9 @@ Action = PlaceTokenAction | TakeCardAction | PlaceCubeAction
 
 
 class GameState:
+    _placed_tokens: tuple[Token, ...]
+    _taken_card: bool
+
     supply_tokens: Counter[Token]
     supply_cards: set[AnimalCard]
 
@@ -85,6 +88,9 @@ class GameState:
         return instance
 
     def __init__(self):
+        self._placed_tokens = ()
+        self._taken_card = False
+
         self.supply_tokens = Counter(
             {
                 Token.GRY: 23,
@@ -120,80 +126,74 @@ class GameState:
         return card
 
     def _refresh_display(self):
-        self.display_tokens = tuple(
-            tuple(sorted(self._draw_token() for _ in range(3))) for _ in range(3)
-        )
         while len(self.display_cards) < 4:
             self.display_cards.append(self._draw_card())
 
-    def _place_token(self, token: Token, pos: GridPosition):
+        if sum(self.supply_tokens.values()) < 9:
+            self.display_tokens = ()
+        else:
+            self.display_tokens = tuple(
+                tuple(sorted(self._draw_token() for _ in range(3))) for _ in range(3)
+            )
+
+    def place_token(self, token: Token, pos: GridPosition):
+        new_placed_tokens = tuple(sorted(self._placed_tokens + (token,)))
+        if not any(
+            all(npt in dts for npt in new_placed_tokens) for dts in self.display_tokens
+        ):
+            raise Exception("Token not available from the display")
         stack = self.board[pos]
         if token not in stack.placements:
             raise Exception(f"Cannot place {token} on {stack}")
         self.board[pos] = stack.placements[token]
+        self._placed_tokens = new_placed_tokens
 
-    def _take_card(self, card: AnimalCard):
+    def take_card(self, card: AnimalCard):
+        if self._taken_card:
+            raise Exception("Cannot take/discard more than one card per turn")
         if len(self.cards) >= 4:
             raise Exception("Cannot take more than 4 cards")
         if card not in self.display_cards:
             raise Exception("Card not in display")
         self.cards[card] = card.num_cubes
         self.display_cards.remove(card)
+        self._taken_card = True
 
-    def _discard_card(self, card: AnimalCard):
+    def discard_card(self, card: AnimalCard):
+        if self._taken_card:
+            raise Exception("Cannot take/discard more than one card per turn")
         if card not in self.display_cards:
             raise Exception("Card not in display")
         self.display_cards.remove(card)
+        self._taken_card = True
 
     def could_place_cube(self, card: AnimalCard, pos: GridPosition):
         if self.board[pos] != card.base:
             return False
-
         return any(
             all(self.board[p] == card.reqs[v] for p, v in rotation.items())
             for rotation in shape_rotations[card.shape][pos]
         )
 
-    def _place_cube(self, card: AnimalCard, pos: GridPosition):
+    def place_cube(self, card: AnimalCard, pos: GridPosition):
         if card not in self.cards:
             raise Exception("Card not in available cards")
         if self.cards[card] == 0:
             raise Exception("No cubes left on that card")
         if self.cubes[pos]:
             raise Exception("Cube already placed at that position")
-
         if not self.could_place_cube(card, pos):
             raise Exception("Requirements for animal card are not met")
-
         self.cubes[pos] = True
         self.cards[card] -= 1
         if self.cards[card] == 0:
             del self.cards[card]
 
-    def take_turn(self, actions: list[Action]):
-        placed_tokens = tuple(
-            sorted(a.token for a in actions if isinstance(a, PlaceTokenAction))
-        )
-        if placed_tokens not in self.display_tokens:
-            raise Exception("Tokens not in the display")
-
-        num_card_actions = sum(
-            isinstance(a, TakeCardAction) or isinstance(a, DiscardCardAction)
-            for a in actions
-        )
-        if num_card_actions > 1:
-            raise Exception("Cannot take or discard more than one animal card per turn")
-
-        for a in actions:
-            if isinstance(a, PlaceTokenAction):
-                self._place_token(a.token, a.pos)
-            elif isinstance(a, TakeCardAction):
-                self._take_card(a.card)
-            elif isinstance(a, DiscardCardAction):
-                self._discard_card(a.card)
-            elif isinstance(a, PlaceCubeAction):
-                self._place_cube(a.card, a.pos)
-
+    def end_turn(self):
+        if len(self._placed_tokens) != 3:
+            raise Exception("Must place exactly 3 tokens every turn")
+        self._placed_tokens = ()
+        self._taken_card = False
         self._refresh_display()
 
     def get_adjacent_tokens(self, pos: GridPosition):
@@ -246,6 +246,13 @@ class GameState:
                 longest_river = max(longest_river, length)
 
         return longest_river
+
+    @property
+    def game_ended(self):
+        return (
+            sum(stack == Stack.EMPTY0 for stack in self.board) <= 2
+            or not self.display_tokens
+        )
 
     @property
     def score(self):
